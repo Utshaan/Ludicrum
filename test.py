@@ -1,85 +1,59 @@
-from rich import print
+from time import sleep
 import requests
-import platform
-
-
-uname = '; '.join(platform.uname())
-pyver = platform.python_version()
-
-header = {'user-agent': f'rarbgapi/0.532.0 ({uname}) python {pyver}'}
-
-param = {'get_token': 'get_token', 'app_id': 'rarbgapi'}
-
-session = requests.Session() 
-req = requests.Request('Get', 'http://torrentapi.org/pubapi_v2.php', headers=header, params=param)
-preq = req.prepare()
-resp = session.send(preq)
-resp.raise_for_status()
-
-print(resp)
+from rich import print
 
 class Ludicrum():
-
-    APP_ID = 'rarbgapi'
-
-    def __init__(self) -> None:
-        self._token = None
-        self._scrape_site = "http://torrentapi.org/pubapi_v2.php"
+    DEFAULT_TRIES = 5
+    def __init__(self, username) -> None:
+        self.USERNAME = username
+        self.SCRAPI = 'https://torrentapi.org/pubapi_v2.php'
+        self.HEADER = {'user-agent': f'Ludicrum/0.1.0 {self.USERNAME}'}
+        self.APP_ID = 'Ludicrum'
+        self.Rsession = requests.Session()
+        self.TOKEN = self.token()
+        self.DEFAULT_TRIES = 5
     
-    def user_agent(self) -> str:
-        username = '; '.join(platform.uname())
-        python_version = platform.python_version()
-        return f'{self.APP_ID}/0.5.0 ({username}) python {python_version}'
-    
+    def r(self, params):
+        req = requests.Request('Get', self.SCRAPI, params=params, headers=self.HEADER)
+        prep = req.prepare()
+        resp = self.Rsession.send(prep)
+        resp.raise_for_status()
+
+        return resp
+
     def token(self):
-        params = {
-            'get_token': 'get_token'
-        }
-        return self.requests('Get', self._scrape_site, params)
+        return self.r({'get_token': 'get_token', 'app_id':self.APP_ID}).json()['token']
     
-    def query(self, mode, **kwargs):
+    def search(self, string, tries=DEFAULT_TRIES):
         params = {
-            'mode': mode,
-            'token': self.token
+            'app_id': self.APP_ID,
+            'mode': 'search',
+            'token': self.TOKEN,
+            'search_string': string
         }
-
-        if 'extended_response' in kwargs:
-            params['format'] = 'json_extended' \
-                if kwargs['extended_response'] else 'json'
-            del kwargs['extended_response']
-        
-        if 'categories' in kwargs:
-            params['category'] = ';'.join(
-                [str(c) for c in kwargs['categories']])
-            del kwargs['categories']
-        
-        for key, value in kwargs.items():
-            if key not in [
-                'sort', 'limit', 'search_string', 'search_imdb', 'search_tvdb', 'search_themoviedb',
-            ]:
-                raise ValueError(f'unsupported parameter {key}')
-            
-            if value in None:
-                continue
-
-            params[key] = value
-        
-        return self.requests('Get', self._scrape_site, params)
-
-    def requests(self, method, url, params={}):
-        params.update({
-            'app_id': self.APP_ID
-        })
-
-        headers = {'user-agent': self.user_agent()}
-
-        session = requests.Session()
-        request = requests.Request(method, url, params=params, headers=headers)
-        prequest = req.prepare()
-        response = session.send(prequest)
-        response.raise_for_status()
-        return response
+        response = self.r(params).json()
+        error_code = response.get('error_code')
+        if error_code and tries > 0:
+            match error_code:
+                case 20:
+                    print('Sitey problem...?')
+                    sleep(2**min(tries- 4,0) + 2)
+                    return self.search(string, tries - 1)
+                case _:
+                    print(error_code)
+        elif tries < 0:
+            raise Exception('Something went wrong')
+        else:
+            return response
 
 
-client = Ludicrum()
-client.
+client = Ludicrum('Omninight')
+results = client.search('stranger things')['torrent_results']
+
+for result in results:
+    name = result['filename']
+    category = result['category']
+    link = result['download']
+    print(name, category, link)
+
+
