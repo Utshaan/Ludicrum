@@ -1,6 +1,8 @@
 from time import sleep
 import requests
 from rich import print, table
+from rich.console import Console
+from rich.table import Table
 from bs4 import BeautifulSoup
 
 class Ludicrum():
@@ -12,7 +14,6 @@ class Ludicrum():
         self.APP_ID = 'Ludicrum'
         self.Rsession = requests.Session()
         self.TOKEN = self.token()
-        # self.DEFAULT_TRIES = 5
     
     def r(self, params):
         req = requests.Request('Get', self.SCRAPI, params=params, headers=self.HEADER)
@@ -25,12 +26,35 @@ class Ludicrum():
     def token(self):
         return self.r({'get_token': 'get_token', 'app_id':self.APP_ID}).json()['token']
     
+    @staticmethod
+    def get_show_ID(search):
+        soup = BeautifulSoup(requests.get(f'https://www.imdb.com/find?q={search}').text, 'html.parser')
+        return Ludicrum.pick_ID(soup.find('table', class_='findList').findAll('td', class_='result_text'))
+    
+    @staticmethod
+    def pick_ID(site_info):
+
+        console = Console()
+
+        table = Table(title="Show Info")
+        table.add_column("No.", justify='right', style="cyan", no_wrap=True, header_style='red')
+        table.add_column("Name", style="magenta")
+        table.add_column("ID", justify="center", style="green")
+
+        for index,td in enumerate(site_info):
+            table.add_row(str(index+1)+'.', td.text, td.findAll('a')[-1].attrs['href'])
+        
+        console.print(table)
+
+        pick = input('\nPick index from table: ')
+        return site_info[int(pick)-1].findAll('a')[-1].attrs['href'][7:-1]
+    
     def search(self, string, tries=DEFAULT_TRIES):
         params = {
             'app_id': self.APP_ID,
             'mode': 'search',
             'token': self.TOKEN,
-            'search_string': string,
+            'search_imdb': Ludicrum.get_show_ID(string),
             'format': 'json_extended',
             # 'ranked': 0
         }
@@ -51,6 +75,7 @@ class Ludicrum():
 
 class LudicrousTorrent():
     def __init__(self, info):
+        self.info = info
         self.title = info['title']
         self.category = info['category']
         self.link = info['download']
@@ -67,15 +92,12 @@ class LudicrousTorrent():
 client = Ludicrum('Omninight')
 ask = '+'.join(input("Search: ").split())
 
-# x = requests.get(f'https://thetvdb.com/search?query={ask}')
-# soup = BeautifulSoup(x.text, 'html.parser')
-# print(soup)
-# raise SystemExit
+# print(client.get_show_ID(ask))
 
 
 results = client.search(ask)['torrent_results']
 
-datas = [print(f'[yellow]{LudicrousTorrent(result)}[/yellow]') for result in results]
+datas = [print(f'[yellow]{LudicrousTorrent(result).info}[/yellow]') for result in results]
 
 
 # """{

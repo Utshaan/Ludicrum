@@ -1,42 +1,31 @@
-# from time import sleep
-# import requests
-# from rich import print
-# from bs4 import BeautifulSoup
-# import platform
+from rich.console import Console
+from rich.table import Table
+import requests
+from bs4 import BeautifulSoup
 
-# # x = '+'.join(input().split())
 
-# scrapi = 'https://torrentapi.org/pubapi_v2.php'
+def get_show_ID(search):
 
-# def _get_user_agent():
-#     username = 'Omninight'
-#     return 'Ludicrum/0.1.0 {username}'
+    console = Console()
 
-# params_token = {'get_token': 'get_token', 'app_id': 'Ludicrum'}
-# headers_token = {'user-agent': _get_user_agent()}
+    soup = BeautifulSoup(requests.get(f'https://www.imdb.com/find?q={search}').text, 'html.parser')
 
-# session = requests.Session()
-# request = requests.Request('Get', scrapi, params=params_token, headers=headers_token)
-# preq = request.prepare()
-# response = session.send(preq)
-# response.raise_for_status()
+    l = soup.find('table', class_='findList').findAll('td', class_='result_text')
 
-# token = response
-# # print(token.json())
+    table = Table(title="Show Info")
+    table.add_column("No.", justify='right', style="cyan", no_wrap=True, header_style='red')
+    table.add_column("Name", style="magenta")
+    table.add_column("ID", justify="center", style="green")
 
-# mode = input('What do you wanna do: ')
-# search = input('Name the show: ')
+    for index,td in enumerate(l):
+        table.add_row(str(index+1)+'.', td.text, td.findAll('a')[-1].attrs['href'])
+    
+    console.print(table)
 
-# params_query = {
-#     'app_id': 'Ludicrum',
-#     'mode': mode,
-#     'token': token.json()['token'],
-#     'search_string': search
-# }
+    pick = input('\nPick index from table: ')
+    return l[int(pick)-1].findAll('a')[-1].attrs['href'][7:-1]
+    
 
-# request = requests.Request('Get', scrapi, params=params_query, headers=headers_token)
-# preq = request.prepare()
-# response = session.send(preq)
-# response.raise_for_status()
+x = '+'.join(input('Search: ').strip())
 
-# print(response.json())
+get_show_ID(x)
