@@ -5,8 +5,11 @@ from rich.console import Console
 from rich.table import Table
 from bs4 import BeautifulSoup
 
+console = Console()
+
 class Ludicrum():
     DEFAULT_TRIES = 5
+
     def __init__(self, username) -> None:
         self.USERNAME = username
         self.SCRAPI = 'https://torrentapi.org/pubapi_v2.php'
@@ -34,15 +37,13 @@ class Ludicrum():
     @staticmethod
     def pick_ID(site_info):
 
-        console = Console()
-
         table = Table(title="Show Info")
         table.add_column("No.", justify='right', style="cyan", no_wrap=True, header_style='red')
         table.add_column("Name", style="magenta")
         table.add_column("ID", justify="center", style="green")
 
         for index,td in enumerate(site_info):
-            table.add_row(str(index+1)+'.', td.text, td.findAll('a')[-1].attrs['href'])
+            table.add_row(str(index+1)+'.', td.text, td.findAll('a')[-1].attrs['href'][7:-1])
         
         console.print(table)
 
@@ -65,8 +66,11 @@ class Ludicrum():
                 case 20:
                     sleep(2)
                     return self.search(string, tries - 1)
+                case 10:
+                    console.print('[bold red]NOT THERE!!![/bold red]')
+                    raise SystemExit
                 case _:
-                    return error_code
+                    return response
         if not error_code:
             return response
         else:
@@ -81,7 +85,7 @@ class LudicrousTorrent():
         self.link = info['download']
         self.seeders = info['seeders']
         self.leechers = info['leechers']
-        self.size = round(int(info['size'])/(2**30),2)
+        self.size = str(round(int(info['size'])/(2**30),2)) + ' GB' if info['size'] > 1073741824 else str(round(int(info['size'])/(2**20),2)) + ' MB'
         self.published_date = info['pubdate']
         self.episode_info = info['episode_info']
         self.rank = info['ranked']
@@ -92,27 +96,25 @@ class LudicrousTorrent():
 client = Ludicrum('Omninight')
 ask = '+'.join(input("Search: ").split())
 
-# print(client.get_show_ID(ask))
 
+results = client.search(ask)
 
-results = client.search(ask)['torrent_results']
+try:
+    results = results['torrent_results']
+except:
+    print(results)
+    raise SystemExit
 
-datas = [print(f'[yellow]{LudicrousTorrent(result).info}[/yellow]') for result in results]
+datas = [LudicrousTorrent(result) for result in results]
 
+torrent_table = Table(title='Table of Torrents', header_style='#bb546a', expand=True, border_style='#395013')
+torrent_table.add_column('No.', justify='right', style='cyan', no_wrap=True)
+torrent_table.add_column('Name', style='#00e5d3')
+torrent_table.add_column('Size', style='yellow', justify='right')
+torrent_table.add_column('S', style='green', justify='right')
+torrent_table.add_column('L', style='#e35b00')
 
-# """{
-#         'title': 'Ms.Marvel.S01E05.2160p.DSNP.WEB-DL.DDP5.1.Atmos.DV.MP4.x265-DVSUX[rartv]',
-#         'category': 'Movies/TV-UHD-episodes',
-#         'download': 'magnet:?xt=urn:btih:33dc4fcdcc078e5b1512fab87d93712d38614cf2&dn=Ms.Marvel.S01E05.2160p.DSNP.WEB-DL.DDP5.1.Atmos.DV.MP4.x265-DV
-# SUX%5Brartv%5D&tr=http%3A%2F%2Ftracker.trackerfix.com%3A80%2Fannounce&tr=udp%3A%2F%2F9.rarbg.me%3A2860&tr=udp%3A%2F%2F9.rarbg.to%3A2780&tr=udp%3A%2
-# F%2Ftracker.tallpenguin.org%3A15770&tr=udp%3A%2F%2Ftracker.slowcheetah.org%3A14780',
-#         'seeders': 70,
-#         'leechers': 38,
-#         'size': 4770025745,
-#         'pubdate': '2022-07-06 07:42:57 +0000',
-#         'episode_info': {'imdb': 'tt10857164', 'tvrage': None, 'tvdb': '368612', 'themoviedb': '92782'},
-#         'ranked': 1,
-#         'info_page': 'https://torrentapi.org/redirect_to_info.php?token=ynoq2zfx4p&p=2_8_1_9_8_0_2__33dc4fcdcc'
-#     }
-# """
+for index, data in enumerate(datas):
+    torrent_table.add_row(str(index+1), data.title, data.size, str(data.seeders), str(data.leechers))
 
+console.print(torrent_table)
