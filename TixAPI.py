@@ -4,23 +4,22 @@ import urllib3
 import json
 from rich import print
 from rich.console import Console
-from rich.table import Table
+from rich.table import Table, Column
 from bs4 import BeautifulSoup
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-username = 'omninight'
 console = Console()
 
 class TixatiAPI():
-    def __init__(self, username) -> None:
+    def __init__(self) -> None:
         with open('config.json', 'r') as f:
             file = json.load(f)
             self.port = file['port']
+            self.username = file['username']
         
         self.target_site = f"https://localhost:{self.port}"
         self.session = requests.Session()
         self.session.verify= False
-        self.username = username
     
     def auth(self):
         self.session.auth = requests.auth.HTTPDigestAuth('omninight', 'nimda')
@@ -38,34 +37,26 @@ class RequestScraper():
     def __init__(self, text) -> None:
         self.soup = BeautifulSoup(text, 'html.parser')
     
-    def get_table(self):
-        tables = self.soup.find_all('table')
+    def get_homestats(self):
+        html_table = self.soup.find('table', class_="homestats")
+        returntable = Table(title=html_table.attrs['class'][0].upper(), expand=True, header_style="#bb546a",border_style="#395013", title_style='cyan', padding=0)
 
-        table_2_rows = tables[1].find_all('tr')[1:]
+        for heading in html_table.find_all('th'):
+            returntable.add_column(heading.text, justify="center")
         
-        table_2 = Table(title=tables[1].attrs['class'][0].upper(), expand=True, header_style="#bb546a",border_style="#395013", title_style='cyan', padding=0)
+        mini_tables = [Table(Column(), Column(justify="right"), expand=True, box= None, show_header=False) for _ in range(3)]
 
-        for i in tables[1].find_all('th'):
-            table_2.add_column(i.text)
-        
-        mini_tables = [Table() for i in range(3)]
-        for table in mini_tables:
-            table.add_column('Item')
-            table.add_column('Value', justify='right')
-            table.expand = True
-            table.box = None
-
-        for row in table_2_rows:
+        for row in html_table.find_all('tr')[1:]:
             l = row.find_all('td')
             for i,data in enumerate(l):
                 mini_tables[i].add_row(data.next.text, data.next.next.text)
             
-        table_2.add_row(mini_tables[0], mini_tables[1], mini_tables[2])
-        console.print(table_2)
+        returntable.add_row(mini_tables[0], mini_tables[1], mini_tables[2])
+        return returntable
 
 
-client = TixatiAPI(username)
+client = TixatiAPI()
 
 client.auth()
 scraper = RequestScraper(client.get_home())
-scraper.get_table()
+console.print(scraper.get_homestats())
