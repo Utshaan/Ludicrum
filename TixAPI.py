@@ -44,7 +44,7 @@ class RequestScraper():
         for heading in html_table.find_all('th'):
             returntable.add_column(heading.text, justify="center")
         
-        mini_tables = [Table(Column(), Column(justify="right"), expand=True, box= None, show_header=False) for _ in range(3)]
+        mini_tables = [Table(Column(), Column(justify="right"), expand=True, box= None, show_header=False, highlight=True) for _ in range(3)]
 
         for row in html_table.find_all('tr')[1:]:
             l = row.find_all('td')
@@ -53,10 +53,19 @@ class RequestScraper():
             
         returntable.add_row(mini_tables[0], mini_tables[1], mini_tables[2])
         return returntable
+    
+    def get_eventlog(self):
+        html_table = self.soup.find('table', class_='eventlogview')
+        returntable = Table(Column(), title=html_table.attrs['class'][0].upper(),expand=True, header_style="#bb546a", border_style="#395013", title_style='cyan', padding=0, show_header=False, highlight=True)
 
+        for row in html_table.find_all('tr')[1:]:
+            returntable.add_row(row.text[1:-1])
+
+        return returntable
 
 client = TixatiAPI()
 
 client.auth()
 scraper = RequestScraper(client.get_home())
 console.print(scraper.get_homestats())
+console.print(scraper.get_eventlog())
