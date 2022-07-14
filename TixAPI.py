@@ -6,6 +6,8 @@ from rich import print
 from rich.console import Console
 from rich.table import Table, Column
 from bs4 import BeautifulSoup
+from time import sleep
+import os
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 console = Console()
@@ -65,12 +67,18 @@ class RequestScraper():
     
     def get_transfers(self):
         html_table = self.soup.find('table', class_='listtable xferslist')
+        # print(html_table)
         
-        returnable = Table(Column(), title=html_table.attrs['class'][0].upper(), expand=True, header_style="#bb546a",border_style="#395013", title_style='cyan', padding=0)
+        returnable = Table(title=html_table.attrs['class'][0].upper(), expand=True, header_style="#bb546a",border_style="#395013", title_style='cyan', padding=0, highlight=True)
 
         for heading in html_table.find_all('th'):
             if heading.text:
                 returnable.add_column(heading.text)
+
+
+        data = map(lambda x: 'N/A' if x == '' else x, (td.text.replace('\n', '') for td in html_table.find_all('td')[1:]))
+
+        returnable.add_row(*data)
         
         return returnable
 
@@ -80,4 +88,12 @@ client.auth()
 scraper = RequestScraper(client.get_transfers())
 # console.print(scraper.get_homestats())
 # console.print(scraper.get_eventlog())
-console.print(scraper.get_transfers())
+scrape_old = client.get_transfers()
+scrape_new = client.get_home()
+while True:
+    if scrape_new != scrape_old:
+        scrape_old, scrape_new = scrape_new, client.get_transfers()
+        os.system('clear')
+        console.print(RequestScraper(scrape_new).get_transfers())
+    sleep(0.5)
+    
