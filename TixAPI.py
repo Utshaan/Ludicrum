@@ -62,10 +62,22 @@ class RequestScraper():
             returntable.add_row(row.text[1:-1])
 
         return returntable
+    
+    def get_transfers(self):
+        html_table = self.soup.find('table', class_='listtable xferslist')
+        
+        returnable = Table(Column(), title=html_table.attrs['class'][0].upper(), expand=True, header_style="#bb546a",border_style="#395013", title_style='cyan', padding=0)
+
+        for heading in html_table.find_all('th'):
+            if heading.text:
+                returnable.add_column(heading.text)
+        
+        return returnable
 
 client = TixatiAPI()
 
 client.auth()
-scraper = RequestScraper(client.get_home())
-console.print(scraper.get_homestats())
-console.print(scraper.get_eventlog())
+scraper = RequestScraper(client.get_transfers())
+# console.print(scraper.get_homestats())
+# console.print(scraper.get_eventlog())
+console.print(scraper.get_transfers())
