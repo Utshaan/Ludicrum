@@ -88,12 +88,13 @@ client.auth()
 scraper = RequestScraper(client.get_transfers())
 # console.print(scraper.get_homestats())
 # console.print(scraper.get_eventlog())
-scrape_old = client.get_transfers()
-scrape_new = client.get_home()
+console.print(RequestScraper(client.get_transfers()).get_transfers())
 while True:
+    scrape_old = client.get_transfers()
+    sleep(1)
+    scrape_new = client.get_transfers()
+
     if scrape_new != scrape_old:
-        scrape_old, scrape_new = scrape_new, client.get_transfers()
-        os.system('clear')
+        os.system('cls')
         console.print(RequestScraper(scrape_new).get_transfers())
-    sleep(0.5)
     

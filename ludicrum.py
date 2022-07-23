@@ -1,6 +1,6 @@
 from time import sleep
 import requests
-from rich import print, table
+from rich import print
 from rich.console import Console
 from rich.table import Table
 from bs4 import BeautifulSoup
@@ -31,20 +31,24 @@ class Ludicrum:
         return self.r({"get_token": "get_token", "app_id": self.APP_ID}).json()["token"]
 
     @staticmethod
-    def get_show_ID(search):
+    def get_IMDB_ID(search):
         soup = BeautifulSoup(
             requests.get(f"https://www.imdb.com/find?q={search}").text, "html.parser"
         )
         return Ludicrum.pick_ID(
             soup.find("table", class_="findList").findAll("td", class_="result_text")
         )
+    
+    @staticmethod
+    def get_TVDB_ID(search):
+        pass
 
     @staticmethod
     def pick_ID(site_info):
 
         table = Table(title="Show Info")
         table.add_column(
-            "No.", justify="right", style="cyan", no_wrap=True, header_style="red"
+            "No.", justify="right", style="cyan", header_style="red"
         )
         table.add_column("Name", style="magenta")
         table.add_column("ID", justify="center", style="green")
@@ -64,7 +68,7 @@ class Ludicrum:
             "app_id": self.APP_ID,
             "mode": "search",
             "token": self.TOKEN,
-            "search_imdb": Ludicrum.get_show_ID(string),
+            "search_imdb": Ludicrum.get_IMDB_ID(string),
             "format": "json_extended",
             # 'ranked': 0
         }
@@ -109,37 +113,38 @@ class LudicrousTorrent:
 client = Ludicrum("Omninight")
 ask = "+".join(input("Search: ").split())
 
-
-results = client.search(ask)
-
-try:
-    results = results["torrent_results"]
-except:
-    print(results)
-    raise SystemExit
-
-datas = [LudicrousTorrent(result) for result in results]
-
-torrent_table = Table(
-    title="Table of Torrents",
-    header_style="#bb546a",
-    expand=True,
-    border_style="#395013",
-)
-torrent_table.add_column("No.", justify="right", style="cyan", no_wrap=True)
-torrent_table.add_column("Name", style="#00e5d3")
-torrent_table.add_column("Size", style="yellow", justify="right")
-torrent_table.add_column("S", style="green", justify="right")
-torrent_table.add_column("L", style="#e35b00")
-
-for index, data in enumerate(datas):
-    torrent_table.add_row(
-        str(index + 1), data.title, data.size, str(data.seeders), str(data.leechers)
-    )
+Ludicrum.get_TVDB_ID(ask)
+# results = client.search(ask)
 
 
+# try:
+#     results = results["torrent_results"]
+# except:
+#     print(results)
+#     raise SystemExit
 
-console.print(torrent_table)
+# datas = [LudicrousTorrent(result) for result in results]
 
-x = int(input("Pick one: "))
-console.print(datas[x-1].link)
+# torrent_table = Table(
+#     title="Table of Torrents",
+#     header_style="#bb546a",
+#     expand=True,
+#     border_style="#395013",
+# )
+# torrent_table.add_column("No.", justify="right", style="cyan", no_wrap=True)
+# torrent_table.add_column("Name", style="#00e5d3")
+# torrent_table.add_column("Size", style="yellow", justify="right")
+# torrent_table.add_column("S", style="green", justify="right")
+# torrent_table.add_column("L", style="#e35b00")
+
+# for index, data in enumerate(datas):
+#     torrent_table.add_row(
+#         str(index + 1), data.title, data.size, str(data.seeders), str(data.leechers)
+#     )
+
+
+
+# console.print(torrent_table)
+
+# x = int(input("Pick one: "))
+# console.print(datas[x-1].link)
