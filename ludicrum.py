@@ -33,18 +33,28 @@ class Ludicrum:
     @staticmethod
     def get_IMDB_ID(search):
         soup = BeautifulSoup(
-            requests.get(f"https://www.imdb.com/find?q={search}").text, "html.parser"
+            requests.get(f"https://www.imdb.com/find", params={"q": search}).text, "html.parser"
         )
-        return Ludicrum.pick_ID(
-            soup.find("table", class_="findList").findAll("td", class_="result_text")
-        )
+        data = list(map(lambda td: (td.text, td.findAll("a")[-1].attrs["href"][7:-1]) , soup.find("table", class_="findList").findAll("td", class_="result_text")))
+        
+        return Ludicrum.pick_ID(data)
     
     @staticmethod
     def get_TVDB_ID(search):
         pass
 
     @staticmethod
-    def pick_ID(site_info):
+    def get_THE_MOVIE_DB_ID(search):
+        response = requests.request("GET", "https://www.themoviedb.org/search", headers={"user-agent": "Ludicrum/0.1.0"}, params={"query":search})
+        soup = BeautifulSoup(
+            response.text, "html.parser"
+        )
+        data = list(map(lambda td: (td.text, td.attrs["href"].split("/")[-1]), soup.find(class_="results flex").findAll(class_="result")[1::2]))
+
+        return Ludicrum.pick_ID(data)
+
+    @staticmethod
+    def pick_ID(data):
 
         table = Table(title="Show Info")
         table.add_column(
@@ -53,25 +63,31 @@ class Ludicrum:
         table.add_column("Name", style="magenta")
         table.add_column("ID", justify="center", style="green")
 
-        for index, td in enumerate(site_info):
+        for index, info in enumerate(data):
+            NAME, ID = info
             table.add_row(
-                str(index + 1) + ".", td.text, td.findAll("a")[-1].attrs["href"][7:-1]
+                str(index + 1) + ".", NAME, ID
             )
 
         console.print(table)
 
         pick = input("\nPick index from table: ")
-        return site_info[int(pick) - 1].findAll("a")[-1].attrs["href"][7:-1]
+        return data[int(pick) - 1][1]
 
-    def search(self, string, tries=DEFAULT_TRIES):
+    def search(self, string, service="IMDB", tries=DEFAULT_TRIES):
         params = {
             "app_id": self.APP_ID,
             "mode": "search",
             "token": self.TOKEN,
-            "search_imdb": Ludicrum.get_IMDB_ID(string),
             "format": "json_extended",
             # 'ranked': 0
         }
+
+        if service == "IMDB":
+            params["search_imdb"] = Ludicrum.get_IMDB_ID(string)
+        elif service == "TMDB":
+            params["search_themoviedb"] = Ludicrum.get_THE_MOVIE_DB_ID(string)
+
         response = self.r(params).json()
         error_code = response.get("error_code")
         if error_code and tries > 0:
@@ -111,40 +127,40 @@ class LudicrousTorrent:
 
 
 client = Ludicrum("Omninight")
-ask = "+".join(input("Search: ").split())
 
-Ludicrum.get_TVDB_ID(ask)
-# results = client.search(ask)
+service_choice = input("Search IMDB ot TMDB: ")
+ask = input("Search: ")
 
-
-# try:
-#     results = results["torrent_results"]
-# except:
-#     print(results)
-#     raise SystemExit
-
-# datas = [LudicrousTorrent(result) for result in results]
-
-# torrent_table = Table(
-#     title="Table of Torrents",
-#     header_style="#bb546a",
-#     expand=True,
-#     border_style="#395013",
-# )
-# torrent_table.add_column("No.", justify="right", style="cyan", no_wrap=True)
-# torrent_table.add_column("Name", style="#00e5d3")
-# torrent_table.add_column("Size", style="yellow", justify="right")
-# torrent_table.add_column("S", style="green", justify="right")
-# torrent_table.add_column("L", style="#e35b00")
-
-# for index, data in enumerate(datas):
-#     torrent_table.add_row(
-#         str(index + 1), data.title, data.size, str(data.seeders), str(data.leechers)
-#     )
+results = client.search(ask, service=service_choice)
 
 
+try:
+    results = results["torrent_results"]
+except:
+    print(results)
+    raise SystemExit
 
-# console.print(torrent_table)
+datas = [LudicrousTorrent(result) for result in results]
 
-# x = int(input("Pick one: "))
-# console.print(datas[x-1].link)
+torrent_table = Table(
+    title="Table of Torrents",
+    header_style="#bb546a",
+    expand=True,
+    border_style="#395013",
+)
+torrent_table.add_column("No.", justify="right", style="cyan", no_wrap=True)
+torrent_table.add_column("Name", style="#00e5d3")
+torrent_table.add_column("Size", style="yellow", justify="right")
+torrent_table.add_column("S", style="green", justify="right")
+torrent_table.add_column("L", style="#e35b00")
+
+for index, data in enumerate(datas):
+    torrent_table.add_row(
+        str(index + 1), data.title, data.size, str(data.seeders), str(data.leechers)
+    )
+
+
+console.print(torrent_table)
+
+x = int(input("Pick one: "))
+console.print(datas[x-1].link)
