@@ -4,6 +4,7 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 from bs4 import BeautifulSoup
+from TixAPI import TixatiAPI, RequestScraper, os
 
 console = Console()
 
@@ -163,4 +164,17 @@ for index, data in enumerate(datas):
 console.print(torrent_table)
 
 x = int(input("Pick one: "))
-console.print(datas[x-1].link)
+
+client = TixatiAPI()
+client.auth()
+client.add_magnet_transfer(datas[x-1].link)
+scraper_transfer = RequestScraper(client.get_transfers())
+console.print(scraper_transfer.get_transfers())
+while True:
+    scrape_old = client.get_transfers()
+    sleep(1)
+    scrape_new = client.get_transfers()
+
+    if scrape_new != scrape_old:
+        os.system('cls')
+        console.print(RequestScraper(scrape_new).get_transfers())

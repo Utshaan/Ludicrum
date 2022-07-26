@@ -34,6 +34,9 @@ class TixatiAPI():
     
     def add_magnet_transfer(self, link):
         self.session.post(f'{self.target_site}/transfers/action', {'addlinktext': link, "addlink": 'add'})
+    
+    def start_process(self, link):
+        pass
 
 class RequestScraper():
     def __init__(self, text) -> None:
@@ -67,7 +70,6 @@ class RequestScraper():
     
     def get_transfers(self):
         html_table = self.soup.find('table', class_='listtable xferslist')
-        # print(html_table)
         
         returnable = Table(title=html_table.attrs['class'][0].upper(), expand=True, header_style="#bb546a",border_style="#395013", title_style='cyan', padding=0, highlight=True)
 
@@ -82,19 +84,22 @@ class RequestScraper():
         
         return returnable
 
-client = TixatiAPI()
 
-client.auth()
-scraper = RequestScraper(client.get_transfers())
-# console.print(scraper.get_homestats())
-# console.print(scraper.get_eventlog())
-console.print(RequestScraper(client.get_transfers()).get_transfers())
-while True:
-    scrape_old = client.get_transfers()
-    sleep(1)
-    scrape_new = client.get_transfers()
+if __name__ == "__main__":
+    client = TixatiAPI()
 
-    if scrape_new != scrape_old:
-        os.system('cls')
-        console.print(RequestScraper(scrape_new).get_transfers())
-    
+    client.auth()
+    scraper_transfers = RequestScraper(client.get_transfers())
+    scraper_home = RequestScraper(client.get_home())
+    console.print(scraper_home.get_homestats())
+    console.print(scraper_home.get_eventlog())
+    console.print(RequestScraper(client.get_transfers()).get_transfers())
+    while True:
+        scrape_old = client.get_transfers()
+        sleep(1)
+        scrape_new = client.get_transfers()
+
+        if scrape_new != scrape_old:
+            os.system('cls')
+            console.print(RequestScraper(scrape_new).get_transfers())
+        
