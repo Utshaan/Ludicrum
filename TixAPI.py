@@ -1,30 +1,25 @@
-#tixati api work here 
-import requests
-import urllib3
-import json
-from rich import print
+from requests import Session
+from requests.auth import HTTPDigestAuth
+from urllib3 import disable_warnings
+from urllib3.exceptions import InsecureRequestWarning
 from rich.console import Console
 from rich.table import Table, Column
 from bs4 import BeautifulSoup
-from time import sleep
-import os
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+disable_warnings(InsecureRequestWarning)
 console = Console()
 
 class TixatiAPI():
-    def __init__(self) -> None:
-        with open('config.json', 'r') as f:
-            file = json.load(f)
-            self.port = file['port']
-            self.username = file['username']
-        
+    def __init__(self, username, port, password) -> None:
+        self.port = port
+        self.username = username
         self.target_site = f"https://localhost:{self.port}"
-        self.session = requests.Session()
+        self.session = Session()
         self.session.verify= False
+        self.auth(username, password)
     
-    def auth(self):
-        self.session.auth = requests.auth.HTTPDigestAuth('omninight', 'nimda')
+    def auth(self, username, password):
+        self.session.auth = HTTPDigestAuth(username, password)
     
     def get_home(self) -> str:
         return self.session.get(f'{self.target_site}/home').text
@@ -35,8 +30,17 @@ class TixatiAPI():
     def add_magnet_transfer(self, link):
         self.session.post(f'{self.target_site}/transfers/action', {'addlinktext': link, "addlink": 'add'})
     
-    def start_process(self, link):
-        pass
+    def remove_transfer(self, ind):
+        name = RequestScraper(self.get_transfers()).soup.find_all(class_='selection')[ind-1].attrs['name']
+        self.session.post(f'{self.target_site}/transfers/action', {'remove': "Remove", name: 1, "removeconf": "Remove+Transfers"})
+    
+    def stop_transfer(self, ind):
+        name = RequestScraper(self.get_transfers()).soup.find_all(class_="selection")[ind-1].attrs['name']
+        self.session.post(f'{self.target_site}/transfers/action', {'stop': 'Stop', name:1})
+    
+    def start_transfer(self, ind):
+        name = RequestScraper(self.get_transfers()).soup.find_all(class_="selection")[ind-1].attrs['name']
+        self.session.post(f'{self.target_site}/transfers/action', {'start': 'Start', name:1})
 
 class RequestScraper():
     def __init__(self, text) -> None:
@@ -83,23 +87,3 @@ class RequestScraper():
         returnable.add_row(*data)
         
         return returnable
-
-
-if __name__ == "__main__":
-    client = TixatiAPI()
-
-    client.auth()
-    scraper_transfers = RequestScraper(client.get_transfers())
-    scraper_home = RequestScraper(client.get_home())
-    console.print(scraper_home.get_homestats())
-    console.print(scraper_home.get_eventlog())
-    console.print(RequestScraper(client.get_transfers()).get_transfers())
-    while True:
-        scrape_old = client.get_transfers()
-        sleep(1)
-        scrape_new = client.get_transfers()
-
-        if scrape_new != scrape_old:
-            os.system('cls')
-            console.print(RequestScraper(scrape_new).get_transfers())
-        

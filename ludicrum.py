@@ -1,10 +1,9 @@
 from time import sleep
-import requests
+from requests import Session, Request, get, request
 from rich import print
 from rich.console import Console
 from rich.table import Table
 from bs4 import BeautifulSoup
-from TixAPI import TixatiAPI, RequestScraper, os
 
 console = Console()
 
@@ -17,11 +16,11 @@ class Ludicrum:
         self.SCRAPI = "https://torrentapi.org/pubapi_v2.php"
         self.HEADER = {"user-agent": f"Ludicrum/0.1.0 {self.USERNAME}"}
         self.APP_ID = "Ludicrum"
-        self.Rsession = requests.Session()
+        self.Rsession = Session()
         self.TOKEN = self.token()
 
     def r(self, params):
-        req = requests.Request("Get", self.SCRAPI, params=params, headers=self.HEADER)
+        req = Request("Get", self.SCRAPI, params=params, headers=self.HEADER)
         prep = req.prepare()
         resp = self.Rsession.send(prep)
         resp.raise_for_status()
@@ -34,7 +33,7 @@ class Ludicrum:
     @staticmethod
     def get_IMDB_ID(search):
         soup = BeautifulSoup(
-            requests.get(f"https://www.imdb.com/find", params={"q": search}).text, "html.parser"
+            get(f"https://www.imdb.com/find", params={"q": search}).text, "html.parser"
         )
         data = list(map(lambda td: (td.text, td.findAll("a")[-1].attrs["href"][7:-1]) , soup.find("table", class_="findList").findAll("td", class_="result_text")))
         
@@ -46,7 +45,7 @@ class Ludicrum:
 
     @staticmethod
     def get_THE_MOVIE_DB_ID(search):
-        response = requests.request("GET", "https://www.themoviedb.org/search", headers={"user-agent": "Ludicrum/0.1.0"}, params={"query":search})
+        response = request("GET", "https://www.themoviedb.org/search", headers={"user-agent": "Ludicrum/0.1.0"}, params={"query":search})
         soup = BeautifulSoup(
             response.text, "html.parser"
         )
@@ -84,9 +83,9 @@ class Ludicrum:
             # 'ranked': 0
         }
 
-        if service == "IMDB":
+        if service == "imdb":
             params["search_imdb"] = Ludicrum.get_IMDB_ID(string)
-        elif service == "TMDB":
+        elif service == "tmdb":
             params["search_themoviedb"] = Ludicrum.get_THE_MOVIE_DB_ID(string)
 
         response = self.r(params).json()
@@ -106,6 +105,26 @@ class Ludicrum:
         else:
             print(response)
             return {"torrent_results": ""}
+    
+    def torrent_table_generator(datas):
+        torrent_table = Table(
+            title="Table of Torrents",
+            header_style="#bb546a",
+            expand=True,
+            border_style="#395013",
+        )
+        torrent_table.add_column("No.", justify="right", style="cyan", no_wrap=True)
+        torrent_table.add_column("Name", style="#00e5d3")
+        torrent_table.add_column("Size", style="yellow", justify="right")
+        torrent_table.add_column("S", style="green", justify="right")
+        torrent_table.add_column("L", style="#e35b00")
+
+        for index, data in enumerate(datas):
+            torrent_table.add_row(
+                str(index + 1), data.title, data.size, str(data.seeders), str(data.leechers)
+            )
+
+        return torrent_table
 
 
 class LudicrousTorrent:
@@ -125,56 +144,3 @@ class LudicrousTorrent:
         self.episode_info = info["episode_info"]
         self.rank = info["ranked"]
         self.download = False
-
-
-client = Ludicrum("Omninight")
-
-service_choice = input("Search IMDB ot TMDB: ")
-ask = input("Search: ")
-
-results = client.search(ask, service=service_choice)
-
-
-try:
-    results = results["torrent_results"]
-except:
-    print(results)
-    raise SystemExit
-
-datas = [LudicrousTorrent(result) for result in results]
-
-torrent_table = Table(
-    title="Table of Torrents",
-    header_style="#bb546a",
-    expand=True,
-    border_style="#395013",
-)
-torrent_table.add_column("No.", justify="right", style="cyan", no_wrap=True)
-torrent_table.add_column("Name", style="#00e5d3")
-torrent_table.add_column("Size", style="yellow", justify="right")
-torrent_table.add_column("S", style="green", justify="right")
-torrent_table.add_column("L", style="#e35b00")
-
-for index, data in enumerate(datas):
-    torrent_table.add_row(
-        str(index + 1), data.title, data.size, str(data.seeders), str(data.leechers)
-    )
-
-
-console.print(torrent_table)
-
-x = int(input("Pick one: "))
-
-client = TixatiAPI()
-client.auth()
-client.add_magnet_transfer(datas[x-1].link)
-scraper_transfer = RequestScraper(client.get_transfers())
-console.print(scraper_transfer.get_transfers())
-while True:
-    scrape_old = client.get_transfers()
-    sleep(1)
-    scrape_new = client.get_transfers()
-
-    if scrape_new != scrape_old:
-        os.system('cls')
-        console.print(RequestScraper(scrape_new).get_transfers())
