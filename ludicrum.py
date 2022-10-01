@@ -105,6 +105,34 @@ class Ludicrum:
         else:
             print(response)
             return {"torrent_results": ""}
+
+    def search_text(self, string, tries=DEFAULT_TRIES):
+        params = {
+            "app_id": self.APP_ID,
+            "mode": "search",
+            "token": self.TOKEN,
+            "format": "json_extended",
+            "search_string": string,
+            'category': "27;28;40;53;32"
+        }
+
+        response = self.r(params).json()
+        error_code = response.get("error_code")
+        if error_code and tries > 0:
+            match error_code:
+                case 20:
+                    sleep(2)
+                    return self.search(string, tries - 1)
+                case 10:
+                    console.print("[bold red]NOT THERE!!![/bold red]")
+                    raise SystemExit
+                case _:
+                    return response
+        if not error_code:
+            return response
+        else:
+            print(response)
+            return {"torrent_results": ""}
     
     def torrent_table_generator(datas):
         torrent_table = Table(
