@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 
 console = Console()
 
+# this is a change, for demo purposes
 
 class Ludicrum:
     DEFAULT_TRIES = 5
